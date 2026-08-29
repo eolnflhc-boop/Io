@@ -1,0 +1,130 @@
+-- ╔════════════════════════════════════════════════════╗
+-- ║           🎣 FISH AUTO SCRIPT v1.0                  ║
+-- ║  ฟังก์ชัน: ตกปลาอัตโนมัติ | บิน | AFK | อีเว้นท์   ║
+-- ╚════════════════════════════════════════════════════╝
+
+-- ====================== การตั้งค่า ======================
+local Settings = {
+    AutoFish = true,           -- ตกปลาอัตโนมัติ
+    FastFish = true,           -- ตกปลาเร็วขึ้น
+    AFKMode = false,           -- โหมด AFK
+    FlyEnabled = false,        -- เปิด/ปิด บิน
+    FlySpeed = 45,             -- ความเร็วบิน (ตามที่กำหนด)
+    AutoPickupRod = true,      -- หยิบเบ็ดอัตโนมัติ
+    InstantCatch = true,       -- ตกปลาแล้วได้ทันที
+    -- โซนอีเว้นท์
+    EventZone = {
+        AutoCatchMegalodon = true,  -- ตกมาเกโลดอนอัตโนมัติ
+        CatchAllEventFish = true    -- ตกปลาอีเว้นท์ทุกชนิด
+    },
+    -- โซนตัวช่วย
+    Helper = {
+        AlwaysBright = true,   -- สว่างตลอดเวลา
+        RemoveFog = true       -- ลบหมอก
+    }
+}
+
+-- ====================== เริ่มต้นระบบ ======================
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
+
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
+
+-- ====================== โซนตัวช่วย ======================
+-- สว่างตลอดเวลา
+if Settings.Helper.AlwaysBright then
+    Lighting.Brightness = 3
+    Lighting.ClockTime = 12
+    Lighting.GeographicLatitude = 0
+end
+
+-- ลบหมอก
+if Settings.Helper.RemoveFog then
+    Lighting.FogEnd = 100000
+    Lighting.FogStart = 10000
+    Lighting.Atmosphere = Instance.new("Atmosphere")
+    Lighting.Atmosphere.Density = 0
+end
+
+-- ====================== โหมด AFK ======================
+if Settings.AFKMode then
+    task.spawn(function()
+        while Settings.AFKMode do
+            task.wait(60)
+            -- ขยับเล็กน้อยเพื่อไม่ให้หลุด
+            HumanoidRootPart.CFrame = HumanoidRootPart.CFrame * CFrame.new(0.01, 0, 0)
+            HumanoidRootPart.CFrame = HumanoidRootPart.CFrame * CFrame.new(-0.01, 0, 0)
+        end
+    end)
+end
+
+-- ====================== ระบบบิน ======================
+local FlyConnection = nil
+local function ToggleFly()
+    Settings.FlyEnabled = not Settings.FlyEnabled
+    
+    if Settings.FlyEnabled then
+        Humanoid.PlatformStand = true
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+        
+        FlyConnection = RunService.RenderStepped:Connect(function()
+            if not Settings.FlyEnabled then return end
+            
+            local camCF = workspace.CurrentCamera.CFrame
+            local moveDir = Vector3.new()
+            
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir += camCF.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir -= camCF.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir -= camCF.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir += camCF.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir += Vector3.new(0, 1, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir -= Vector3.new(0, 1, 0) end
+            
+            moveDir = moveDir.Unit * Settings.FlySpeed
+            HumanoidRootPart.Velocity = moveDir
+        end)
+    else
+        if FlyConnection then FlyConnection:Disconnect() end
+        Humanoid.PlatformStand = false
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+    end
+end
+
+-- กด F เพื่อเปิด/ปิดบิน
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        ToggleFly()
+    end
+end)
+
+-- ====================== หยิบเบ็ดอัตโนมัติ ======================
+task.spawn(function()
+    while task.wait(1) do
+        if not Settings.AutoPickupRod then continue end
+        if not Character then break end
+        
+        for _, desc in pairs(workspace:GetDescendants()) do
+            if desc:IsA("Tool") and string.find(string.lower(desc.Name), "rod") or string.find(string.lower(desc.Name), "เบ็ด") then
+                if not desc.Parent:IsA("Model") or desc.Parent == Character then continue end
+                
+                local mag = (desc.Position - HumanoidRootPart.Position).Magnitude
+                if mag < 15 then
+                    fireclickdetector(desc.ClickDetector, "MouseButton1Click")
+                end
+            end
+        end
+    end
+end)
+
+-- ====================== โซนอีเว้นท์ & ตกปลาอัตโนมัติ ======================
+task.spawn(function()
+    while task.wait(Settings.FastFish and 0.3 or 1) do
+        if not Settings.AutoFish then continue end
+        if not Chara
